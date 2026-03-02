@@ -1,0 +1,106 @@
+services:
+      unbound:
+            build:
+                  context: .
+                  dockerfile: services/unbound/Dockerfile
+            restart: unless-stopped
+            init: true
+            security_opt:
+                  - no-new-privileges:true
+            cap_add:
+                  - NET_BIND_SERVICE
+            ports:
+                  - "${UNBOUND_BIND_IP:-127.0.0.1}:${UNBOUND_DNS_PORT:-5353}:53/tcp"
+                  - "${UNBOUND_BIND_IP:-127.0.0.1}:${UNBOUND_DNS_PORT:-5353}:53/udp"
+            volumes:
+                  - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
+                  - ./unbound/blacklist.conf:/etc/unbound/blacklist.conf:ro
+            networks:
+                  - proxy_net
+
+      tor:
+            build:
+                  context: .
+                  dockerfile: services/tor/Dockerfile
+            restart: unless-stopped
+            init: true
+            security_opt:
+                  - no-new-privileges:true
+            cap_drop:
+                  - ALL
+            volumes:
+                  - ./tor/torrc:/etc/tor/torrc:ro
+            networks:
+                  - proxy_net
+
+      privoxy:
+            build:
+                  context: .
+                  dockerfile: services/privoxy/Dockerfile
+            restart: unless-stopped
+            init: true
+            security_opt:
+                  - no-new-privileges:true
+            cap_drop:
+                  - ALL
+            depends_on:
+                  - tor
+            environment:
+                  TOR_SOCKS_HOST: ${TOR_SOCKS_HOST:-tor}
+                  TOR_SOCKS_PORT: ${TOR_SOCKS_PORT:-9050}
+            volumes:
+                  - ./privoxy/config:/etc/privoxy/config:ro
+                  - privoxy_logs:/var/log/privoxy
+            ports:
+                  - "${PRIVOXY_BIND_IP:-127.0.0.1}:${PRIVOXY_BIND_PORT:-8118}:8118"
+            networks:
+                  - proxy_net
+
+      mitmproxy:
+            build: .
+            restart: unless-stopped
+            init: true
+            security_opt:
+                  - no-new-privileges:true
+            cap_drop:
+                  - ALL
+            depends_on:
+                  - privoxy
+                  - unbound
+            environment:
+                  AUTH_MODE: ${AUTH_MODE:-basic}
+                  USERS_FILE: ${USERS_FILE:-/app/app/users.yaml}
+                  POLICY_FILE: ${POLICY_FILE:-/app/app/policy.yaml}
+                  RATE_LIMIT_RPM: ${RATE_LIMIT_RPM:-120}
+                  RATE_LIMIT_WINDOW_SEC: ${RATE_LIMIT_WINDOW_SEC:-60}
+                  AUTH_LOG_FILE: ${AUTH_LOG_FILE:-/app/logs/auth.log}
+                  TRAFFIC_LOG_FILE: ${TRAFFIC_LOG_FILE:-/app/logs/traffic.log}
+            ports:
+                  - "${MITMPROXY_BIND_IP:-0.0.0.0}:${MITMPROXY_BIND_PORT:-8080}:8080"
+            command:
+                  [
+                        "mitmdump",
+                        "--listen-host",
+                        "0.0.0.0",
+                        "--listen-port",
+                        "8080",
+                        "--mode",
+                        "upstream:http://privoxy:${PRIVOXY_UPSTREAM_PORT:-8118}",
+                        "--set",
+                        "connection_strategy=lazy",
+                        "-s",
+                        "app/gatekeeper.py"
+                  ]
+            volumes:
+                  - ./app:/app/app:ro
+                  - ./cron:/app/cron:ro
+                  - ./unbound:/app/unbound
+                  - ./logs:/app/logs
+            networks:
+                  - proxy_net
+
+networks:
+      proxy_net:
+
+volumes:
+      privoxy_logs:

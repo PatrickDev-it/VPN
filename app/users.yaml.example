@@ -1,0 +1,4 @@
+users:
+  alice:
+    password_sha256: "13dc8554575637802eec3c0117f41558a9c63cc6a3810f33f5b2f1f79dc9f3a1"
+    token: "replace-with-random-token"

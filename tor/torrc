@@ -1,0 +1,11 @@
+ClientOnly 1
+SocksPort 0.0.0.0:9050 IsolateSOCKSAuth IsolateClientAddr KeepAliveIsolateSOCKSAuth
+ControlPort 0.0.0.0:9051
+CookieAuthentication 1
+DataDirectory /var/lib/tor
+SafeSocks 1
+DNSPort 0
+AutomapHostsOnResolve 0
+MaxCircuitDirtiness 600
+NewCircuitPeriod 120
+Log notice stdout
