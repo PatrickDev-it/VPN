@@ -1,70 +1,70 @@
 #!/usr/bin/env bash
 # ===========================================================================
-#  setup-vps.sh – Setup completo Debian 12 + CloudPanel + Proxy Stack
+#  setup-vps.sh - Full Debian 12 + CloudPanel + Proxy Stack bootstrap
 # ===========================================================================
-#  Eseguire come root su un Debian 12 pulito.
-#  Legge le variabili da ../.env (o usa default sicuri).
+#  Run as root on a clean Debian 12 host.
+#  Loads variables from ../.env (or uses safe defaults).
 #
-#  Uso:  sudo bash init/setup-vps.sh
+#  Usage: sudo bash init/setup-vps.sh
 # ===========================================================================
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# 0. Paths e variabili
+# 0. Paths and variables
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/.env"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "Errore: Esegui lo script come root (usa 'sudo' o 'su -')."
+  echo "Error: run this script as root (use 'sudo' or 'su -')."
   exit 1
 fi
 
-# Carica .env se presente (per MY_DOMAIN, MY_EMAIL, porte, ecc.)
+# Load .env if available (MY_DOMAIN, MY_EMAIL, ports, etc.)
 if [[ -f "${ENV_FILE}" ]]; then
   set -a; source "${ENV_FILE}"; set +a
-  echo "[*] Caricato ${ENV_FILE}"
+  echo "[*] Loaded ${ENV_FILE}"
 else
-  echo "[!] ${ENV_FILE} non trovato; uso default. Crea .env da .env.example per personalizzare."
+  echo "[!] ${ENV_FILE} not found; using defaults. Create .env from .env.example to customize."
 fi
 
 MY_DOMAIN="${MY_DOMAIN:-}"
 MY_EMAIL="${MY_EMAIL:-}"
 
-# Chiedi interattivamente se non presenti
+# Interactive prompts for missing values
 if [[ -z "${MY_DOMAIN}" ]]; then
-  read -rp "Inserisci il tuo dominio (es. example.com) [vuoto = solo IP]: " MY_DOMAIN
+  read -rp "Enter your domain (e.g. example.com) [leave empty = IP only]: " MY_DOMAIN
 fi
 if [[ -z "${MY_EMAIL}" && -n "${MY_DOMAIN}" ]]; then
-  read -rp "Inserisci email per Let's Encrypt / CloudPanel: " MY_EMAIL
+  read -rp "Enter email for Let's Encrypt / CloudPanel: " MY_EMAIL
 fi
 
-UNBOUND_DNS_PORT="${UNBOUND_DNS_PORT:-53}"
+UNBOUND_DNS_PORT="${UNBOUND_DNS_PORT:-5353}"
 UNBOUND_DOT_PORT="${UNBOUND_DOT_PORT:-853}"
 MITMPROXY_BIND_PORT="${MITMPROXY_BIND_PORT:-8080}"
 
 export DEBIAN_FRONTEND=noninteractive
 
 # ---------------------------------------------------------------------------
-# 1. Aggiornamento e dipendenze base
+# 1. System update and base dependencies
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== [1/8] Aggiornamento e Dipendenze Debian ==="
+echo "=== [1/8] Debian update and dependencies ==="
 apt update && apt -y upgrade
 apt -y install \
   curl wget sudo ufw ca-certificates gnupg lsb-release \
   fail2ban dnsutils openssl cron
 
 # ---------------------------------------------------------------------------
-# 2. Docker Engine (se non già presente)
+# 2. Docker Engine (if missing)
 # ---------------------------------------------------------------------------
 echo ""
 echo "=== [2/8] Docker Engine ==="
 if command -v docker &>/dev/null; then
-  echo "[✓] Docker già installato: $(docker --version)"
+  echo "[✓] Docker already installed: $(docker --version)"
 else
-  echo "[*] Installazione Docker Engine..."
+  echo "[*] Installing Docker Engine..."
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
@@ -75,36 +75,36 @@ else
   apt update
   apt -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   systemctl enable --now docker
-  echo "[✓] Docker installato: $(docker --version)"
+  echo "[✓] Docker installed: $(docker --version)"
 fi
 
 # ---------------------------------------------------------------------------
-# 3. CloudPanel (opzionale – solo se dominio configurato)
+# 3. CloudPanel (optional - only if domain is configured)
 # ---------------------------------------------------------------------------
 echo ""
 echo "=== [3/8] CloudPanel ==="
 if [[ -n "${MY_DOMAIN}" ]]; then
   if [[ -d "/home/clp" ]]; then
-    echo "[✓] CloudPanel già installato."
+    echo "[✓] CloudPanel already installed."
   else
-    read -rp "Vuoi installare CloudPanel? (y/N): " INSTALL_CLP
+    read -rp "Install CloudPanel? (y/N): " INSTALL_CLP
     if [[ "${INSTALL_CLP,,}" == "y" ]]; then
-      echo "[*] Installazione CloudPanel (MySQL 8.0)..."
+      echo "[*] Installing CloudPanel (MySQL 8.0)..."
       curl -sSL https://installer.cloudpanel.io/ce/v2/install.sh | sudo DB_ENGINE=MYSQL_8.0 bash
-      echo "[✓] CloudPanel installato. Accedi a https://<IP>:8443 per completare il setup."
+      echo "[✓] CloudPanel installed. Access https://<IP>:8443 to complete setup."
     else
-      echo "[→] CloudPanel saltato."
+      echo "[→] CloudPanel skipped."
     fi
   fi
 else
-  echo "[→] Nessun dominio configurato; CloudPanel non necessario."
+  echo "[→] No domain configured; CloudPanel not required."
 fi
 
 # ---------------------------------------------------------------------------
 # 4. Firewall (UFW)
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== [4/8] Configurazione Firewall (UFW) ==="
+echo "=== [4/8] Firewall configuration (UFW) ==="
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp  comment 'SSH'
@@ -115,7 +115,7 @@ if [[ -n "${MY_DOMAIN}" ]]; then
   ufw allow 8443/tcp comment 'CloudPanel UI'
 fi
 
-# DNS ports (solo se esposti pubblicamente)
+# DNS ports (only if publicly exposed)
 if [[ "${UNBOUND_BIND_IP:-127.0.0.1}" == "0.0.0.0" ]]; then
   ufw allow "${UNBOUND_DNS_PORT}/udp" comment 'DNS Standard'
   ufw allow "${UNBOUND_DNS_PORT}/tcp" comment 'DNS Standard'
@@ -126,15 +126,15 @@ fi
 ufw allow "${MITMPROXY_BIND_PORT}/tcp" comment 'Proxy ingress (mitmproxy)'
 
 ufw --force enable
-echo "[✓] Firewall configurato."
+echo "[✓] Firewall configured."
 
 # ---------------------------------------------------------------------------
-# 5. Ottimizzazione Kernel & Limiti di Sistema
+# 5. Kernel tuning and system limits
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== [5/8] Ottimizzazione Kernel & Limiti ==="
+echo "=== [5/8] Kernel tuning and limits ==="
 cat <<'SYSCTL' > /etc/sysctl.d/99-vps-proxy.conf
-# VPS Proxy Stack – tuning per migliaia di connessioni concorrenti
+# VPS Proxy Stack - tuning for high concurrency
 fs.file-max = 2097152
 net.core.somaxconn = 65535
 net.ipv4.tcp_tw_reuse = 1
@@ -150,7 +150,7 @@ cat <<'LIMITS' > /etc/security/limits.d/vps-proxy.conf
 root soft nofile 1048576
 root hard nofile 1048576
 LIMITS
-echo "[✓] Kernel e limiti ottimizzati."
+echo "[✓] Kernel and limits tuned."
 
 # ---------------------------------------------------------------------------
 # 6. Fail2Ban
@@ -165,50 +165,50 @@ maxretry = 3
 bantime  = 1d
 F2B
 systemctl enable --now fail2ban
-echo "[✓] Fail2Ban attivo."
+echo "[✓] Fail2Ban enabled."
 
 # ---------------------------------------------------------------------------
-# 7. Genera certificati TLS (se necessario)
+# 7. Generate TLS certificates (if required)
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== [7/8] Certificati TLS ==="
+echo "=== [7/8] TLS certificates ==="
 bash "${SCRIPT_DIR}/generate-certs.sh"
 
 # ---------------------------------------------------------------------------
-# 8. Avvia Proxy Stack (bootstrap.sh)
+# 8. Start proxy stack (bootstrap.sh)
 # ---------------------------------------------------------------------------
 echo ""
-echo "=== [8/8] Avvio Proxy Stack ==="
+echo "=== [8/8] Starting proxy stack ==="
 bash "${SCRIPT_DIR}/bootstrap.sh"
 
 # ---------------------------------------------------------------------------
-# Riepilogo finale
+# Final summary
 # ---------------------------------------------------------------------------
 echo ""
 echo "=========================================================="
-echo "  SETUP VPS COMPLETATO"
+echo "  VPS SETUP COMPLETED"
 echo "=========================================================="
 echo ""
-echo "Servizi attivi:"
-echo "  - Proxy ingress (mitmproxy): porta ${MITMPROXY_BIND_PORT}"
-echo "  - DNS locale (Unbound):      porta ${UNBOUND_DNS_PORT} + DoT ${UNBOUND_DOT_PORT}"
-echo "  - Tor anonimizzazione:        SOCKS interno 9050"
+echo "Active services:"
+echo "  - Proxy ingress (mitmproxy): port ${MITMPROXY_BIND_PORT}"
+echo "  - Local DNS (Unbound):       port ${UNBOUND_DNS_PORT} + DoT ${UNBOUND_DOT_PORT}"
+echo "  - Tor anonymization:         internal SOCKS 9050"
 echo ""
 if [[ -n "${MY_DOMAIN}" ]]; then
-  echo "Prossimi passi con dominio '${MY_DOMAIN}':"
-  echo "  1. Accedi a https://<IP>:8443 e crea l'utente CloudPanel."
-  echo "  2. Aggiungi il sito '${MY_DOMAIN}' e attiva SSL Let's Encrypt."
-  echo "  3. Dopo SSL attivo, esegui: bash init/setup-domain.sh"
-  echo "     per agganciare i certificati al proxy e Unbound DoT."
+  echo "Next steps for domain '${MY_DOMAIN}':"
+  echo "  1. Access https://<IP>:8443 and create your CloudPanel account."
+  echo "  2. Add site '${MY_DOMAIN}' and enable Let's Encrypt SSL."
+  echo "  3. After SSL is active, run: bash init/setup-domain.sh"
+  echo "     to bind certificates to proxy and Unbound DoT."
 else
-  echo "Nessun dominio configurato."
-  echo "  - Proxy raggiungibile via IP: http://<IP>:${MITMPROXY_BIND_PORT}"
-  echo "  - Certificati DoT: self-signed in ./ssl-certificates/"
-  echo "  - Per aggiungere un dominio: bash init/setup-domain.sh"
+  echo "No domain configured."
+  echo "  - Proxy reachable by IP: http://<IP>:${MITMPROXY_BIND_PORT}"
+  echo "  - DoT certificates: self-signed in ./ssl-certificates/"
+  echo "  - To add a domain later: bash init/setup-domain.sh"
 fi
 echo ""
-echo "Comandi utili:"
-echo "  make logs        – log tutti i servizi"
-echo "  make logs-auth   – log autenticazione"
-echo "  make down        – stop stack"
+echo "Useful commands:"
+echo "  make logs        - tail logs for all services"
+echo "  make logs-auth   - tail authentication logs"
+echo "  make down        - stop stack"
 echo "=========================================================="

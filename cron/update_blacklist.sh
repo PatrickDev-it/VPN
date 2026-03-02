@@ -20,4 +20,4 @@ BEGIN {
 ' > "$tmp_file"
 
 install -m 0644 "$tmp_file" "$OUTPUT_FILE"
-echo "Blacklist aggiornata: $OUTPUT_FILE"
+echo "Blacklist updated: $OUTPUT_FILE"

@@ -1,4 +1,4 @@
-# Se una richiesta matcha qui, passa subito e ignora le blacklist
+# If a request matches here, allow immediately and skip blacklist checks
 whitelist_domains:
 	- 'twitch.tv'
 	- 'static-cdn.jtvnw.net'
@@ -10,11 +10,11 @@ whitelist_domains:
 whitelist_keywords:
 	- '/login'
 
-# Se non è in whitelist, controlla qui
+# If not matched by whitelist, evaluate blacklist rules below
 blacklist_domains:
-	- 'googleadservices.com' # Il motore dei redirect degli annunci
+	- 'googleadservices.com' # Ad redirect domain
 	- 'adservice.google.com'
-	- 'booking.com' # Blocco diretto
+	- 'booking.com' # Direct block
 	- 'doubleclick.net'
 	- 'googlesyndication.com'
 	- 'googlevideo.com'
@@ -29,11 +29,11 @@ blacklist_domains:
 blacklist_keywords:
 	- 'aclk'
 	- 'signaler'
-	- 'ptracking' # YouTube lo usa per tracciare i clic sugli ads
+	- 'ptracking' # Common YouTube ad click tracking parameter
 	- 'adunit'
 	- 'ad_type'
 	- 'pbg_data'
-	- 'booking' # Se la parola appare nell'URL dell'annuncio
+	- 'booking' # Block when keyword appears in ad-related URLs
 	- 'clickserve'
 	- 'googleadservices'
 	- 'log_event'

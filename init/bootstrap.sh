@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${PROJECT_DIR}/.env"
 PRIVOXY_CONFIG="${PROJECT_DIR}/privoxy/config"
@@ -13,7 +14,7 @@ SSL_DIR="${PROJECT_DIR}/ssl-certificates"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   cp "${PROJECT_DIR}/.env.example" "${ENV_FILE}"
-  echo "Creato ${ENV_FILE} da .env.example"
+  echo "Created ${ENV_FILE} from .env.example"
 fi
 
 set -a
@@ -47,18 +48,18 @@ keep-alive-timeout ${PRIVOXY_KEEP_ALIVE_TIMEOUT}
 tolerate-pipelining ${PRIVOXY_TOLERATE_PIPELINING}
 EOF
 
-echo "Privoxy config generata in ${PRIVOXY_CONFIG}"
+echo "Privoxy config generated at ${PRIVOXY_CONFIG}"
 
 # ---------------------------------------------------------------------------
-# Genera certificati TLS se non presenti
+# Generate TLS certificates if missing
 # ---------------------------------------------------------------------------
 if [[ ! -f "${SSL_DIR}/server.key" || ! -f "${SSL_DIR}/server.crt" ]]; then
-  echo "Certificati TLS non trovati; genero con TLS_MODE=${TLS_MODE:-selfsigned}..."
+  echo "TLS certificates not found; generating with TLS_MODE=${TLS_MODE:-selfsigned}..."
   bash "${SCRIPT_DIR}/generate-certs.sh"
 fi
 
 # ---------------------------------------------------------------------------
-# Render unbound.conf – sostituisci placeholder TLS
+# Render unbound.conf - replace TLS placeholders
 # ---------------------------------------------------------------------------
 TLS_SERVICE_KEY="/etc/nginx/ssl-certificates/server.key"
 TLS_SERVICE_PEM="/etc/nginx/ssl-certificates/server.crt"
@@ -66,12 +67,12 @@ TLS_SERVICE_PEM="/etc/nginx/ssl-certificates/server.crt"
 if grep -q '{{TLS_SERVICE_KEY}}' "${UNBOUND_CONF_SRC}" 2>/dev/null; then
   sed -i "s|{{TLS_SERVICE_KEY}}|${TLS_SERVICE_KEY}|g" "${UNBOUND_CONF_SRC}"
   sed -i "s|{{TLS_SERVICE_PEM}}|${TLS_SERVICE_PEM}|g" "${UNBOUND_CONF_SRC}"
-  echo "Unbound conf: path TLS aggiornati."
+  echo "Unbound config: TLS paths updated."
 fi
 
 docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d --build
 
-echo "Stack avviato (unbound, tor, privoxy, mitmproxy)"
+echo "Stack started (unbound, tor, privoxy, mitmproxy)"
 
 if [[ "${INSTALL_SYSTEMD:-1}" == "1" ]]; then
   tmp_service="$(mktemp)"
@@ -80,7 +81,7 @@ if [[ "${INSTALL_SYSTEMD:-1}" == "1" ]]; then
   sudo install -m 0644 "${tmp_service}" "${SYSTEMD_TARGET}"
   sudo systemctl daemon-reload
   sudo systemctl enable --now vps-proxy-stack.service
-  echo "Systemd service installato e abilitato: vps-proxy-stack.service"
+  echo "Systemd service installed and enabled: vps-proxy-stack.service"
 fi
 
 if [[ "${INSTALL_CRON:-1}" == "1" ]]; then
@@ -94,7 +95,7 @@ if [[ "${INSTALL_CRON:-1}" == "1" ]]; then
     printf '%s %s %s\n' "${CRON_SCHEDULE}" "${CRON_CMD}" "${CRON_TAG}"
   } | crontab -
 
-  echo "Cron blacklist aggiornato: ${CRON_SCHEDULE}"
+  echo "Blacklist cron schedule updated: ${CRON_SCHEDULE}"
 fi
 
-echo "Bootstrap completato."
+echo "Bootstrap completed."

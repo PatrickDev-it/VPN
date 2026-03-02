@@ -5,25 +5,25 @@ UseEntryGuards 1
 NumEntryGuards 2
 
 #############################
-# EXIT POLICY — ANTI ADS
+# EXIT POLICY - ANTI-ADS
 #############################
-# Paesi a basso CPM, enforcement GDPR forte,
-# scarso interesse per advertiser YouTube
+# Low-CPM countries with stronger GDPR posture
+# and lower advertiser targeting pressure
 ExitNodes {de},{it},{ad},{mc},{al},{mm},{mv},{vn},{uz}
 
-# Escludi mercati ad-premium e anglosfera
+# Exclude ad-premium markets and Anglosphere regions
 ExcludeNodes {ch},{us},{gb},{au},{ca},{fr},{nl},{be},{ie},{se},{no},{dk},{fi},{jp},{kr},{cn},{ru}
 
-# Forza l'uso esclusivo della lista sopra
+# Enforce strict use of the selected list
 StrictNodes 1
 
 ################################
-# TOPOLOGIA / OPSEC
+# TOPOLOGY / OPSEC
 ################################
 EnforceDistinctSubnets 1
 
 ################################
-# CIRCUIT LIFETIME (ANTI PROFILING)
+# CIRCUIT LIFETIME (ANTI-PROFILING)
 ################################
 NewCircuitPeriod 300
 MaxCircuitDirtiness 1800
@@ -37,7 +37,7 @@ ConnectionPadding 1
 ReducedConnectionPadding 0
 
 ################################
-# SOCKS + ISOLAMENTO FORTE
+# SOCKS + STRONG ISOLATION
 ################################
 SocksPort 9050 IsolateDestAddr IsolateDestPort IsolateSOCKSAuth
 
@@ -51,7 +51,7 @@ DNSPort 0
 AutomapHostsOnResolve 0
 
 ################################
-# LOGGING (DEBUG OPERATIVO)
+# LOGGING (OPERATIONAL DEBUG)
 ################################
 Log notice file /var/log/tor/notices.log
 Log info file /var/log/tor/info.log
