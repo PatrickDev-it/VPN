@@ -53,7 +53,6 @@ class Gatekeeper:
             re.IGNORECASE,
         )
         self.target_paths = [
-            "/next",
             "/youtubei/",
             "/api/stats/",
             "/ptracking/",

@@ -1,7 +1,16 @@
-.PHONY: init build up down logs logs-auth logs-traffic test lint update-blacklist verify smoke
+.PHONY: init build up down logs logs-auth logs-traffic logs-tor test lint update-blacklist verify smoke setup-vps setup-domain generate-certs
 
 init:
 	bash init/bootstrap.sh
+
+setup-vps:
+	sudo bash init/setup-vps.sh
+
+setup-domain:
+	bash init/setup-domain.sh
+
+generate-certs:
+	bash init/generate-certs.sh
 
 build:
 	docker compose build
@@ -20,6 +29,9 @@ logs-auth:
 
 logs-traffic:
 	tail -f logs/traffic.log
+
+logs-tor:
+	docker compose exec tor tail -f /var/log/tor/notices.log
 
 test:
 	docker compose run --rm --no-deps mitmproxy sh -lc "python -m pip install --user --no-cache-dir -r requirements-dev.txt && python -m pytest"

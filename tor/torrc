@@ -1,11 +1,57 @@
+###############
+# ENTRY GUARDS
+###############
+UseEntryGuards 1
+NumEntryGuards 2
+
+#############################
+# EXIT POLICY — ANTI ADS
+#############################
+# Paesi a basso CPM, enforcement GDPR forte,
+# scarso interesse per advertiser YouTube
+ExitNodes {de},{it},{ad},{mc},{al},{mm},{mv},{vn},{uz}
+
+# Escludi mercati ad-premium e anglosfera
+ExcludeNodes {ch},{us},{gb},{au},{ca},{fr},{nl},{be},{ie},{se},{no},{dk},{fi},{jp},{kr},{cn},{ru}
+
+# Forza l'uso esclusivo della lista sopra
+StrictNodes 1
+
+################################
+# TOPOLOGIA / OPSEC
+################################
+EnforceDistinctSubnets 1
+
+################################
+# CIRCUIT LIFETIME (ANTI PROFILING)
+################################
+NewCircuitPeriod 300
+MaxCircuitDirtiness 1800
+CircuitBuildTimeout 30
+MaxClientCircuitsPending 100
+
+################################
+# PADDING (ANTI TRAFFIC ANALYSIS)
+################################
+ConnectionPadding 1
+ReducedConnectionPadding 0
+
+################################
+# SOCKS + ISOLAMENTO FORTE
+################################
+SocksPort 9050 IsolateDestAddr IsolateDestPort IsolateSOCKSAuth
+
+################################
+# BASE
+################################
 ClientOnly 1
-SocksPort 0.0.0.0:9050 IsolateSOCKSAuth IsolateClientAddr KeepAliveIsolateSOCKSAuth
-ControlPort 0.0.0.0:9051
-CookieAuthentication 1
 DataDirectory /var/lib/tor
 SafeSocks 1
 DNSPort 0
 AutomapHostsOnResolve 0
-MaxCircuitDirtiness 600
-NewCircuitPeriod 120
-Log notice stdout
+
+################################
+# LOGGING (DEBUG OPERATIVO)
+################################
+Log notice file /var/log/tor/notices.log
+Log info file /var/log/tor/info.log

@@ -1,4 +1,51 @@
-whitelist_domains: []
-whitelist_keywords: []
-blacklist_domains: []
-blacklist_keywords: []
+# Se una richiesta matcha qui, passa subito e ignora le blacklist
+whitelist_domains:
+	- 'twitch.tv'
+	- 'static-cdn.jtvnw.net'
+	- 'google.com'
+	- 'apple.com'
+	- 'cloudpanel.forum'
+	- '^rr[0-9]'
+
+whitelist_keywords:
+	- '/login'
+
+# Se non è in whitelist, controlla qui
+blacklist_domains:
+	- 'googleadservices.com' # Il motore dei redirect degli annunci
+	- 'adservice.google.com'
+	- 'booking.com' # Blocco diretto
+	- 'doubleclick.net'
+	- 'googlesyndication.com'
+	- 'googlevideo.com'
+	- 'suggestqueries.google.com'
+	- '^rkv'
+	- 'tagmanager'
+	- 'ads'
+	- 'analytic'
+	- 'advertis'
+	- '^signaler'
+
+blacklist_keywords:
+	- 'aclk'
+	- 'signaler'
+	- 'ptracking' # YouTube lo usa per tracciare i clic sugli ads
+	- 'adunit'
+	- 'ad_type'
+	- 'pbg_data'
+	- 'booking' # Se la parola appare nell'URL dell'annuncio
+	- 'clickserve'
+	- 'googleadservices'
+	- 'log_event'
+	- 'ad_status.'
+	- 'ads'
+	- 'adv'
+	- 'activeview'
+	- 'metrics'
+	- 'analytic'
+	- 'sponsor'
+	- '\b(ad[a-z])\.'
+	- '/stat'
+	- 'track'
+	- 'watchtime'
+	- 'interac'

@@ -1,0 +1,15 @@
+# Environment (contains secrets)
+.env
+
+# Generated TLS certificates
+ssl-certificates/
+
+# Runtime logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+
+# User credentials (contains secrets)
+app/users.yaml

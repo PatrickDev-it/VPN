@@ -12,9 +12,11 @@ services:
             ports:
                   - "${UNBOUND_BIND_IP:-127.0.0.1}:${UNBOUND_DNS_PORT:-5353}:53/tcp"
                   - "${UNBOUND_BIND_IP:-127.0.0.1}:${UNBOUND_DNS_PORT:-5353}:53/udp"
+                  - "${UNBOUND_DOT_BIND_IP:-127.0.0.1}:${UNBOUND_DOT_PORT:-853}:853/tcp"
             volumes:
                   - ./unbound/unbound.conf:/etc/unbound/unbound.conf:ro
                   - ./unbound/blacklist.conf:/etc/unbound/blacklist.conf:ro
+                  - ${UNBOUND_TLS_CERTS_DIR:-./ssl-certificates}:/etc/nginx/ssl-certificates:ro
             networks:
                   - proxy_net
 
@@ -30,6 +32,7 @@ services:
                   - ALL
             volumes:
                   - ./tor/torrc:/etc/tor/torrc:ro
+                  - tor_logs:/var/log/tor
             networks:
                   - proxy_net
 
@@ -104,3 +107,4 @@ networks:
 
 volumes:
       privoxy_logs:
+      tor_logs:

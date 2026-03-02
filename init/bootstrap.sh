@@ -8,6 +8,9 @@ SYSTEMD_TEMPLATE="${PROJECT_DIR}/init/vps-proxy-stack.service"
 SYSTEMD_TARGET="/etc/systemd/system/vps-proxy-stack.service"
 CRON_TAG="# VPS_BLACKLIST_UPDATE"
 
+UNBOUND_CONF_SRC="${PROJECT_DIR}/unbound/unbound.conf"
+SSL_DIR="${PROJECT_DIR}/ssl-certificates"
+
 if [[ ! -f "${ENV_FILE}" ]]; then
   cp "${PROJECT_DIR}/.env.example" "${ENV_FILE}"
   echo "Creato ${ENV_FILE} da .env.example"
@@ -19,6 +22,7 @@ set +a
 
 mkdir -p "${PROJECT_DIR}/logs"
 mkdir -p "${PROJECT_DIR}/privoxy"
+mkdir -p "${SSL_DIR}"
 
 PRIVOXY_LISTEN_IP="${PRIVOXY_LISTEN_IP:-127.0.0.1}"
 PRIVOXY_LISTEN_PORT="${PRIVOXY_LISTEN_PORT:-8118}"
@@ -44,6 +48,26 @@ tolerate-pipelining ${PRIVOXY_TOLERATE_PIPELINING}
 EOF
 
 echo "Privoxy config generata in ${PRIVOXY_CONFIG}"
+
+# ---------------------------------------------------------------------------
+# Genera certificati TLS se non presenti
+# ---------------------------------------------------------------------------
+if [[ ! -f "${SSL_DIR}/server.key" || ! -f "${SSL_DIR}/server.crt" ]]; then
+  echo "Certificati TLS non trovati; genero con TLS_MODE=${TLS_MODE:-selfsigned}..."
+  bash "${SCRIPT_DIR}/generate-certs.sh"
+fi
+
+# ---------------------------------------------------------------------------
+# Render unbound.conf – sostituisci placeholder TLS
+# ---------------------------------------------------------------------------
+TLS_SERVICE_KEY="/etc/nginx/ssl-certificates/server.key"
+TLS_SERVICE_PEM="/etc/nginx/ssl-certificates/server.crt"
+
+if grep -q '{{TLS_SERVICE_KEY}}' "${UNBOUND_CONF_SRC}" 2>/dev/null; then
+  sed -i "s|{{TLS_SERVICE_KEY}}|${TLS_SERVICE_KEY}|g" "${UNBOUND_CONF_SRC}"
+  sed -i "s|{{TLS_SERVICE_PEM}}|${TLS_SERVICE_PEM}|g" "${UNBOUND_CONF_SRC}"
+  echo "Unbound conf: path TLS aggiornati."
+fi
 
 docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d --build
 
