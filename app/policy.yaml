@@ -1,51 +1,169 @@
-# If a request matches here, allow immediately and skip blacklist checks
+# =============================================================================
+# policy.yaml — Gatekeeper Policy Configuration
+#
+# This file is hot-reloaded every CONFIG_RELOAD_INTERVAL_SEC seconds (default: 30).
+# Changes take effect without restarting mitmproxy.
+#
+# Evaluation order for every request:
+#   1. whitelist_domains  → allow immediately (skip all blacklists)
+#   2. whitelist_keywords → allow immediately (skip all blacklists)
+#   3. blacklist_domains  → block with 403
+#   4. blacklist_keywords → block with 403
+#
+# All patterns are Python regular expressions, matched case-insensitively.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Blocked request messages (HTTP 403 response body)
+# Override these to customize what users see when a request is blocked.
+# -----------------------------------------------------------------------------
+msg_blocked_domain: "Site blocked by Gatekeeper"
+msg_blocked_keyword: "Content blocked by Gatekeeper"
+
+# -----------------------------------------------------------------------------
+# Domain whitelist
+# Matched against the request host. If matched, the request is allowed
+# immediately and no blacklist rules are evaluated.
+# -----------------------------------------------------------------------------
 whitelist_domains:
-	- 'twitch.tv'
-	- 'static-cdn.jtvnw.net'
-	- 'google.com'
-	- 'apple.com'
-	- 'cloudpanel.forum'
-	- '^rr[0-9]'
+  - 'twitch\.tv$'
+  - 'static-cdn\.jtvnw\.net$'
+  - 'google\.com$'
+  - 'apple\.com$'
+  - 'cloudpanel\.forum'
+  - '^rr[0-9]'
 
+# -----------------------------------------------------------------------------
+# URL keyword whitelist
+# Matched against the full request URL. Allows the request immediately.
+# -----------------------------------------------------------------------------
 whitelist_keywords:
-	- '/login'
+  - '/login'
 
-# If not matched by whitelist, evaluate blacklist rules below
+# -----------------------------------------------------------------------------
+# Domain blacklist
+# Matched against the request host. Blocks with 403 if matched.
+# -----------------------------------------------------------------------------
 blacklist_domains:
-	- 'googleadservices.com' # Ad redirect domain
-	- 'adservice.google.com'
-	- 'booking.com' # Direct block
-	- 'doubleclick.net'
-	- 'googlesyndication.com'
-	- 'googlevideo.com'
-	- 'suggestqueries.google.com'
-	- '^rkv'
-	- 'tagmanager'
-	- 'ads'
-	- 'analytic'
-	- 'advertis'
-	- '^signaler'
+  - 'googleadservices\.com'       # Ad redirect domain
+  - 'adservice\.google\.com'
+  - 'booking\.com'                # Direct block
+  - 'doubleclick\.net'
+  - 'googlesyndication\.com'
+  - 'googlevideo\.com'
+  - 'suggestqueries\.google\.com'
+  - '^rkv'
+  - 'tagmanager'
+  - '\bads\b'
+  - 'analytic'
+  - 'advertis'
+  - '^signaler'
 
+# -----------------------------------------------------------------------------
+# URL keyword blacklist
+# Matched against the full request URL. Blocks with 403 if matched.
+# -----------------------------------------------------------------------------
 blacklist_keywords:
-	- 'aclk'
-	- 'signaler'
-	- 'ptracking' # Common YouTube ad click tracking parameter
-	- 'adunit'
-	- 'ad_type'
-	- 'pbg_data'
-	- 'booking' # Block when keyword appears in ad-related URLs
-	- 'clickserve'
-	- 'googleadservices'
-	- 'log_event'
-	- 'ad_status.'
-	- 'ads'
-	- 'adv'
-	- 'activeview'
-	- 'metrics'
-	- 'analytic'
-	- 'sponsor'
-	- '\b(ad[a-z])\.'
-	- '/stat'
-	- 'track'
-	- 'watchtime'
-	- 'interac'
+  - 'aclk'
+  - 'signaler'
+  - 'ptracking'                   # YouTube ad click tracking parameter
+  - 'adunit'
+  - 'ad_type'
+  - 'pbg_data'
+  - 'booking'                     # Block ad-related booking URLs
+  - 'clickserve'
+  - 'googleadservices'
+  - 'log_event'
+  - 'ad_status\.'
+  - '\bads\b'
+  - '\badv\b'
+  - 'activeview'
+  - 'metrics'
+  - 'analytic'
+  - 'sponsor'
+  - '\b(ad[a-z])\.'
+  - '/stat'
+  - 'track'
+  - 'watchtime'
+  - 'interac'
+
+# -----------------------------------------------------------------------------
+# JSON response scrubbing
+#
+# ad_key_patterns: list of prefix strings. Any JSON key whose name starts with
+#   one of these terms (case-insensitive) is zeroed out in the response body.
+#   Lists → [], dicts → {}, bools → false, numbers → 0, strings → "".
+#
+# scrub_streaming_hosts: hosts that must not stream (body buffered for scrubbing).
+# -----------------------------------------------------------------------------
+ad_key_patterns:
+  - "ad"
+  - "adv"
+  - "track"
+  - "adsense"
+  - "monitoring"
+  - "stats"
+  - "heartbeat"
+  - "impression"
+  - "suggested_ad"
+  - "offsets"
+  - "watermark"
+  - "affiliation"
+
+scrub_streaming_hosts:
+  - "youtube.com"
+  - "googleapis.com"
+
+# -----------------------------------------------------------------------------
+# URL path substrings that trigger JSON scrubbing regardless of Content-Type.
+# -----------------------------------------------------------------------------
+scrub_target_paths:
+  - "/youtubei/"
+  - "/api/stats/"
+  - "/ptracking/"
+  - "/log_event/"
+  - "/player"
+
+# -----------------------------------------------------------------------------
+# Binary response scrubbing (fallback when JSON parsing fails).
+#
+# Each entry has an `old` and a `new` string.
+# IMPORTANT: old and new MUST be the same byte length.
+# Mismatched pairs are skipped with a warning in the log.
+# -----------------------------------------------------------------------------
+binary_replacements:
+  - old: "adPlacements"
+    new: "xxPlacements"
+  - old: "ad_placement"
+    new: "xx_placement"
+  - old: "trackingParams"
+    new: "xxxxxxxParams"
+  - old: "adBreakHeartbeatParams"
+    new: "xxBreakHeartbeatParams"
+
+# -----------------------------------------------------------------------------
+# Per-user policy profiles
+#
+# Users reference a profile by name via `policy_profile` in users.yaml.
+# A profile completely overrides the top-level whitelist/blacklist rules
+# for that user. Omitted keys fall back to an empty list (not the top-level).
+#
+# Use the `default` profile for users who should use top-level rules.
+# -----------------------------------------------------------------------------
+profiles:
+  default: {}   # resolves to top-level rules
+
+  strict:
+    whitelist_domains:
+      - 'internal\.corp\.example\.com'
+    blacklist_domains:
+      - '.*'    # block everything not explicitly whitelisted
+    whitelist_keywords: []
+    blacklist_keywords: []
+
+  permissive:
+    whitelist_domains:
+      - '.*'    # allow all domains
+    blacklist_domains: []
+    whitelist_keywords: []
+    blacklist_keywords: []

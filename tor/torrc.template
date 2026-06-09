@@ -1,0 +1,59 @@
+###############
+# ENTRY GUARDS
+###############
+UseEntryGuards 1
+NumEntryGuards 2
+
+#############################
+# EXIT POLICY
+# Rendered by init/bootstrap.sh — edit .env, not this file directly.
+#############################
+ExitNodes {{EXIT_NODES}}
+ExcludeNodes {{EXCLUDE_NODES}}
+
+# Enforce strict use of the selected list
+StrictNodes 1
+
+################################
+# TOPOLOGY / OPSEC
+################################
+EnforceDistinctSubnets 1
+
+################################
+# CIRCUIT LIFETIME (ANTI-PROFILING)
+################################
+NewCircuitPeriod 300
+MaxCircuitDirtiness 1800
+CircuitBuildTimeout 30
+MaxClientCircuitsPending 100
+
+################################
+# PADDING (ANTI TRAFFIC ANALYSIS)
+################################
+ConnectionPadding 1
+ReducedConnectionPadding 0
+
+################################
+# SOCKS + STRONG ISOLATION
+################################
+SocksPort 9050 IsolateDestAddr IsolateDestPort IsolateSOCKSAuth
+
+################################
+# CONTROL PORT (optional — set TOR_CONTROL_ENABLED=1 in .env)
+################################
+{{TOR_CONTROL_BLOCK}}
+
+################################
+# BASE
+################################
+ClientOnly 1
+DataDirectory /var/lib/tor
+SafeSocks 1
+DNSPort 0
+AutomapHostsOnResolve 0
+
+################################
+# LOGGING (OPERATIONAL DEBUG)
+################################
+Log notice file /var/log/tor/notices.log
+Log info file /var/log/tor/info.log

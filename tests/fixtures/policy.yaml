@@ -1,0 +1,30 @@
+ad_key_patterns:
+- ad
+- track
+- stats
+binary_replacements:
+- new: xxPlacements
+  old: adPlacements
+blacklist_domains:
+- blocked\.example\.com$
+blacklist_keywords:
+- badkeyword
+msg_blocked_domain: Site blocked by Gatekeeper
+msg_blocked_keyword: Content blocked by Gatekeeper
+profiles:
+  default: {}
+  strict:
+    blacklist_domains:
+    - .*
+    blacklist_keywords: []
+    whitelist_domains:
+    - internal\.corp$
+    whitelist_keywords: []
+scrub_streaming_hosts:
+- youtube.com
+scrub_target_paths:
+- /youtubei/
+whitelist_domains:
+- trusted\.example\.com$
+whitelist_keywords:
+- /login

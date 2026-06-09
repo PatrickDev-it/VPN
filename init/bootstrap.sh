@@ -70,6 +70,40 @@ if grep -q '{{TLS_SERVICE_KEY}}' "${UNBOUND_CONF_SRC}" 2>/dev/null; then
   echo "Unbound config: TLS paths updated."
 fi
 
+# ---------------------------------------------------------------------------
+# Render tor/torrc from template
+# Idempotent: always regenerates torrc from the template on every bootstrap run.
+# Edit .env (TOR_EXIT_NODES, TOR_EXCLUDE_NODES) — never edit torrc directly.
+# ---------------------------------------------------------------------------
+TORRC_TEMPLATE="${PROJECT_DIR}/tor/torrc.template"
+TORRC_OUTPUT="${PROJECT_DIR}/tor/torrc"
+
+if [[ -f "${TORRC_TEMPLATE}" ]]; then
+  cp "${TORRC_TEMPLATE}" "${TORRC_OUTPUT}"
+
+  EXIT_NODES="${TOR_EXIT_NODES:-{de},{it},{ad},{mc},{al},{mm},{mv},{vn},{uz}}"
+  EXCLUDE_NODES="${TOR_EXCLUDE_NODES:-{ch},{us},{gb},{au},{ca},{fr},{nl},{be},{ie},{se},{no},{dk},{fi},{jp},{kr},{cn},{ru}}"
+
+  sed -i "s|{{EXIT_NODES}}|${EXIT_NODES}|g"       "${TORRC_OUTPUT}"
+  sed -i "s|{{EXCLUDE_NODES}}|${EXCLUDE_NODES}|g" "${TORRC_OUTPUT}"
+
+  if [[ "${TOR_CONTROL_ENABLED:-0}" == "1" ]]; then
+    CONTROL_BLOCK="ControlPort ${TOR_CONTROL_PORT:-9051}"$'\n'"CookieAuthentication 1"
+    # Use a Python one-liner to handle the multi-line substitution portably
+    python3 -c "
+import pathlib, sys
+p = pathlib.Path('${TORRC_OUTPUT}')
+p.write_text(p.read_text().replace('{{TOR_CONTROL_BLOCK}}', '''${CONTROL_BLOCK}'''))
+"
+  else
+    sed -i "s|{{TOR_CONTROL_BLOCK}}||g" "${TORRC_OUTPUT}"
+  fi
+
+  echo "tor/torrc rendered (ExitNodes=${EXIT_NODES}, ControlPort=${TOR_CONTROL_ENABLED:-0})"
+else
+  echo "WARNING: tor/torrc.template not found — using existing torrc as-is"
+fi
+
 docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d --build
 
 echo "Stack started (unbound, tor, privoxy, mitmproxy)"
@@ -99,3 +133,55 @@ if [[ "${INSTALL_CRON:-1}" == "1" ]]; then
 fi
 
 echo "Bootstrap completed."
+
+# ---------------------------------------------------------------------------
+# Health check — verify critical services came up
+# ---------------------------------------------------------------------------
+health_check() {
+  local ok=0
+  local fail=0
+
+  echo ""
+  echo "=== Post-start health check ==="
+  sleep 5  # allow containers time to initialize
+
+  # mitmproxy TCP reachability
+  local proxy_port="${MITMPROXY_BIND_PORT:-8080}"
+  if timeout 3 bash -c ">/dev/tcp/127.0.0.1/${proxy_port}" 2>/dev/null; then
+    echo "[OK]   mitmproxy reachable on :${proxy_port}"
+    ok=$((ok + 1))
+  else
+    echo "[FAIL] mitmproxy not reachable on :${proxy_port}"
+    fail=$((fail + 1))
+  fi
+
+  # Unbound DNS resolution
+  if docker compose -f "${PROJECT_DIR}/docker-compose.yml" \
+      exec -T unbound nslookup example.com 127.0.0.1 >/dev/null 2>&1; then
+    echo "[OK]   Unbound DNS resolving"
+    ok=$((ok + 1))
+  else
+    echo "[WARN] Unbound DNS check failed — container may still be initializing"
+  fi
+
+  # Tor bootstrap progress
+  local tor_log
+  tor_log=$(docker compose -f "${PROJECT_DIR}/docker-compose.yml" \
+    logs tor 2>/dev/null | tail -20 || true)
+  if echo "${tor_log}" | grep -q "Bootstrapped 100%"; then
+    echo "[OK]   Tor bootstrapped to 100%"
+    ok=$((ok + 1))
+  elif echo "${tor_log}" | grep -q "Bootstrapped"; then
+    echo "[INFO] Tor bootstrap in progress (will complete in ~30 s)"
+  else
+    echo "[WARN] No Tor bootstrap log found — check: make logs"
+  fi
+
+  echo ""
+  echo "Health check complete: ${ok} OK, ${fail} FAIL"
+  if [[ "${fail}" -gt 0 ]]; then
+    echo "       Run 'make logs' to investigate failures."
+  fi
+}
+
+health_check

@@ -1,4 +1,52 @@
+# =============================================================================
+# users.yaml — User Credentials and Per-User Preferences
+#
+# This file is hot-reloaded every CONFIG_RELOAD_INTERVAL_SEC seconds (default: 30).
+# Changes take effect without restarting mitmproxy.
+#
+# SECURITY: Keep this file secret. Never commit it to version control.
+#
+# Generate a password hash:
+#   echo -n 'mypassword' | sha256sum | cut -d' ' -f1
+#
+# Generate a random token:
+#   openssl rand -hex 32
+# =============================================================================
+
 users:
+  # ---------------------------------------------------------------------------
+  # Minimal user — required fields only
+  # ---------------------------------------------------------------------------
   alice:
+    # SHA256 hex digest of the plaintext password (used in AUTH_MODE=basic)
     password_sha256: "13dc8554575637802eec3c0117f41558a9c63cc6a3810f33f5b2f1f79dc9f3a1"
-    token: "replace-with-random-token"
+    # Bearer token (used in AUTH_MODE=token or X-Proxy-Token header)
+    token: "replace-with-a-random-hex-string"
+
+  # ---------------------------------------------------------------------------
+  # Full user — all optional overrides shown
+  # ---------------------------------------------------------------------------
+  bob:
+    password_sha256: "replace-with-sha256-hash"
+    token: "replace-with-another-random-hex-string"
+
+    # Preferred exit countries (ISO 3166-1 alpha-2 codes).
+    # When set, gatekeeper signals Tor to rotate circuits (NEWNYM) so outgoing
+    # traffic is more likely to exit via one of these countries.
+    # Requires TOR_CONTROL_ENABLED=1 in .env and stem>=1.8.2 in requirements.txt.
+    # NOTE: NEWNYM rotates circuits globally (Tor limitation) — not per-user isolated.
+    # Leave unset to use the global TOR_EXIT_NODES value from .env.
+    exit_countries:
+      - "de"
+      - "it"
+
+    # Policy profile name. Must match a key under `profiles:` in policy.yaml.
+    # Use "default" (or omit this field) to apply the top-level whitelist/blacklist rules.
+    # Use "strict" to block all domains not explicitly whitelisted.
+    # Use "permissive" to allow all traffic without filtering.
+    policy_profile: "default"
+
+    # Per-user request rate limit (requests per minute).
+    # Overrides the global RATE_LIMIT_RPM environment variable for this user only.
+    # Omit to use the global limit.
+    rate_limit_rpm: 200

@@ -1,4 +1,7 @@
-.PHONY: init build up down logs logs-auth logs-traffic logs-tor test lint update-blacklist verify smoke setup-vps setup-domain generate-certs
+.PHONY: install init build up down logs logs-auth logs-traffic logs-tor test lint update-blacklist verify smoke setup-vps setup-domain generate-certs
+
+install:
+	sudo bash install.sh
 
 init:
 	bash init/bootstrap.sh

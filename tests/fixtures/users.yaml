@@ -1,0 +1,8 @@
+users:
+  alice:
+    password_sha256: cbe6beb26479b568e5f15b50217c6c83c0ee051dc4e522b9840d8e291d6aaf46
+    token: valid-token-abc123
+  bob:
+    password_sha256: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+    rate_limit_rpm: 1000
+    token: bob-token-xyz
