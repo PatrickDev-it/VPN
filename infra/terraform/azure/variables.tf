@@ -1,0 +1,9 @@
+variable "project_name"          { default = "vpn-platform" }
+variable "environment"           { default = "production" }
+variable "region"                { default = "westeurope" }
+variable "vm_size"               { default = "Standard_B1s" }
+variable "vpn_proxy_port"        { default = 8080 }
+variable "ssh_public_key"        { sensitive = true }
+variable "allowed_ingress_cidrs" { default = ["0.0.0.0/0"] }
+variable "disk_size_gb"          { default = 20 }
+variable "tags"                  { default = {} }

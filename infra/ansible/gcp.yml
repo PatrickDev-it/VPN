@@ -1,0 +1,16 @@
+---
+# =============================================================================
+# gcp.yml — Deploy VPN stack to a GCP Compute Engine instance
+#
+# Usage:
+#   ansible-playbook -i inventories/gcp/hosts.ini gcp.yml \
+#     -e "ansible_host=<INSTANCE_EXTERNAL_IP>"
+# =============================================================================
+- name: Deploy VPN Platform — GCP Compute Engine
+  hosts: vpn
+  become: true
+  vars:
+    ansible_user: ubuntu
+
+  roles:
+    - vpn-stack

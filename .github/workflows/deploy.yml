@@ -1,0 +1,236 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Target deployment provider"
+        required: true
+        type: choice
+        options:
+          - ubuntu
+          - aws
+          - gcp
+          - azure
+      target_ip:
+        description: "Server IP (required for ubuntu target; auto-detected for cloud targets)"
+        required: false
+        type: string
+      environment:
+        description: "Deployment environment"
+        required: false
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: deploy-${{ github.event.inputs.provider }}-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate: run CI before any deploy
+  # ---------------------------------------------------------------------------
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # ---------------------------------------------------------------------------
+  # Ubuntu / bare-metal deploy (Ansible only)
+  # ---------------------------------------------------------------------------
+  deploy-ubuntu:
+    if: github.event.inputs.provider == 'ubuntu'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Deploy via Ansible
+        run: |
+          ansible-playbook \
+            -i "infra/ansible/inventories/ubuntu/hosts.ini" \
+            infra/ansible/ubuntu.yml \
+            -e "ansible_host=${{ github.event.inputs.target_ip }}" \
+            --private-key ~/.ssh/deploy_key \
+            --ssh-extra-args="-o StrictHostKeyChecking=accept-new"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+
+  # ---------------------------------------------------------------------------
+  # AWS deploy (Terraform + Ansible)
+  # ---------------------------------------------------------------------------
+  deploy-aws:
+    if: github.event.inputs.provider == 'aws'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.x"
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > ~/.ssh/deploy_key.pub
+
+      - name: Terraform init + apply
+        working-directory: infra/terraform/aws
+        run: |
+          terraform init -upgrade -input=false
+          terraform apply -auto-approve \
+            -var="ssh_public_key=$(cat ~/.ssh/deploy_key.pub)" \
+            -var="environment=${{ github.event.inputs.environment }}"
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    ${{ vars.AWS_REGION || 'eu-west-1' }}
+
+      - name: Get public IP from Terraform
+        id: tf_output
+        working-directory: infra/terraform/aws
+        run: echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via Ansible
+        run: |
+          ansible-playbook \
+            -i "infra/ansible/inventories/aws/hosts.ini" \
+            infra/ansible/aws.yml \
+            -e "ansible_host=${{ steps.tf_output.outputs.public_ip }}" \
+            --private-key ~/.ssh/deploy_key \
+            --ssh-extra-args="-o StrictHostKeyChecking=accept-new"
+
+      - name: Print proxy endpoint
+        run: echo "Proxy endpoint → http://${{ steps.tf_output.outputs.public_ip }}:8080"
+
+  # ---------------------------------------------------------------------------
+  # GCP deploy (Terraform + Ansible)
+  # ---------------------------------------------------------------------------
+  deploy-gcp:
+    if: github.event.inputs.provider == 'gcp'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.x"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > ~/.ssh/deploy_key.pub
+
+      - name: Terraform init + apply
+        working-directory: infra/terraform/gcp
+        run: |
+          terraform init -upgrade -input=false
+          terraform apply -auto-approve \
+            -var="ssh_public_key=$(cat ~/.ssh/deploy_key.pub)" \
+            -var="gcp_project=${{ vars.GCP_PROJECT }}" \
+            -var="environment=${{ github.event.inputs.environment }}"
+
+      - name: Get public IP from Terraform
+        id: tf_output
+        working-directory: infra/terraform/gcp
+        run: echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via Ansible
+        run: |
+          ansible-playbook \
+            -i "infra/ansible/inventories/gcp/hosts.ini" \
+            infra/ansible/gcp.yml \
+            -e "ansible_host=${{ steps.tf_output.outputs.public_ip }}" \
+            --private-key ~/.ssh/deploy_key \
+            --ssh-extra-args="-o StrictHostKeyChecking=accept-new"
+
+      - name: Print proxy endpoint
+        run: echo "Proxy endpoint → http://${{ steps.tf_output.outputs.public_ip }}:8080"
+
+  # ---------------------------------------------------------------------------
+  # Azure deploy (Terraform + Ansible)
+  # ---------------------------------------------------------------------------
+  deploy-azure:
+    if: github.event.inputs.provider == 'azure'
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.x"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > ~/.ssh/deploy_key.pub
+
+      - name: Terraform init + apply
+        working-directory: infra/terraform/azure
+        run: |
+          terraform init -upgrade -input=false
+          terraform apply -auto-approve \
+            -var="ssh_public_key=$(cat ~/.ssh/deploy_key.pub)" \
+            -var="environment=${{ github.event.inputs.environment }}"
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Get public IP from Terraform
+        id: tf_output
+        working-directory: infra/terraform/azure
+        run: echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy via Ansible
+        run: |
+          ansible-playbook \
+            -i "infra/ansible/inventories/azure/hosts.ini" \
+            infra/ansible/azure.yml \
+            -e "ansible_host=${{ steps.tf_output.outputs.public_ip }}" \
+            --private-key ~/.ssh/deploy_key \
+            --ssh-extra-args="-o StrictHostKeyChecking=accept-new"
+
+      - name: Print proxy endpoint
+        run: echo "Proxy endpoint → http://${{ steps.tf_output.outputs.public_ip }}:8080"

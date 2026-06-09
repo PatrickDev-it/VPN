@@ -1,52 +1,78 @@
-.PHONY: install init build up down logs logs-auth logs-traffic logs-tor test lint update-blacklist verify smoke setup-vps setup-domain generate-certs
+.PHONY: install init build up down logs logs-auth logs-traffic logs-tor test lint update-blacklist verify smoke setup-vps setup-domain generate-certs deploy
 
+VPN_DIR := vpn
+
+# ---------------------------------------------------------------------------
+# One-liner install (curl-pipe entry point)
+# ---------------------------------------------------------------------------
 install:
-	sudo bash install.sh
+	sudo bash $(VPN_DIR)/install.sh
 
+# ---------------------------------------------------------------------------
+# VPN stack lifecycle
+# ---------------------------------------------------------------------------
 init:
-	bash init/bootstrap.sh
+	bash $(VPN_DIR)/init/bootstrap.sh
 
 setup-vps:
-	sudo bash init/setup-vps.sh
+	sudo bash $(VPN_DIR)/init/setup-vps.sh
 
 setup-domain:
-	bash init/setup-domain.sh
+	bash $(VPN_DIR)/init/setup-domain.sh
 
 generate-certs:
-	bash init/generate-certs.sh
+	bash $(VPN_DIR)/init/generate-certs.sh
 
 build:
-	docker compose build
+	docker compose -f $(VPN_DIR)/docker-compose.yml build
 
 up:
-	docker compose up -d
+	docker compose -f $(VPN_DIR)/docker-compose.yml up -d
 
 down:
-	docker compose down
+	docker compose -f $(VPN_DIR)/docker-compose.yml down
 
+# ---------------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------------
 logs:
-	docker compose logs -f mitmproxy privoxy tor unbound
+	docker compose -f $(VPN_DIR)/docker-compose.yml logs -f mitmproxy privoxy tor unbound
 
 logs-auth:
-	tail -f logs/auth.log
+	tail -f $(VPN_DIR)/logs/auth.log
 
 logs-traffic:
-	tail -f logs/traffic.log
+	tail -f $(VPN_DIR)/logs/traffic.log
 
 logs-tor:
-	docker compose exec tor tail -f /var/log/tor/notices.log
+	docker compose -f $(VPN_DIR)/docker-compose.yml exec tor tail -f /var/log/tor/notices.log
 
+# ---------------------------------------------------------------------------
+# Quality
+# ---------------------------------------------------------------------------
 test:
-	docker compose run --rm --no-deps mitmproxy sh -lc "python -m pip install --user --no-cache-dir -r requirements-dev.txt && python -m pytest"
+	docker compose -f $(VPN_DIR)/docker-compose.yml run --rm --no-deps mitmproxy \
+	  sh -lc "python -m pip install --user --no-cache-dir -r requirements-dev.txt && python -m pytest"
 
 lint:
-	docker compose run --rm --no-deps mitmproxy sh -lc "python -m pip install --user --no-cache-dir -r requirements-dev.txt && python -m ruff check ."
+	docker compose -f $(VPN_DIR)/docker-compose.yml run --rm --no-deps mitmproxy \
+	  sh -lc "python -m pip install --user --no-cache-dir -r requirements-dev.txt && python -m ruff check ."
 
 update-blacklist:
-	docker compose run --rm --no-deps mitmproxy bash cron/update_blacklist.sh
+	docker compose -f $(VPN_DIR)/docker-compose.yml run --rm --no-deps mitmproxy \
+	  bash cron/update_blacklist.sh
 
 smoke:
-	docker compose run --rm --no-deps mitmproxy mitmdump --version
+	docker compose -f $(VPN_DIR)/docker-compose.yml run --rm --no-deps mitmproxy mitmdump --version
 
 verify: lint smoke
-	docker compose config -q
+	docker compose -f $(VPN_DIR)/docker-compose.yml config -q
+
+# ---------------------------------------------------------------------------
+# Multi-cloud deploy
+# ---------------------------------------------------------------------------
+deploy:
+	@bash deploy/deploy.sh $(filter-out $@,$(MAKECMDGOALS))
+
+%:
+	@:

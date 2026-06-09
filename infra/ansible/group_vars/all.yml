@@ -1,0 +1,14 @@
+# =============================================================================
+# group_vars/all.yml — defaults shared by every provider playbook
+# =============================================================================
+
+vpn_repo_url:    "https://github.com/your-org/vpn-platform.git"
+vpn_repo_branch: "main"
+vpn_install_dir: "/opt/vpn-platform"
+vpn_force_restart: false
+
+# Optional: override .env values via Ansible
+# vpn_env_overrides:
+#   MY_DOMAIN: "vpn.example.com"
+#   TOR_EXIT_NODES: "{de},{it}"
+#   TOR_CONTROL_ENABLED: "1"

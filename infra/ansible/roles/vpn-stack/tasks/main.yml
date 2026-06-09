@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# roles/vpn-stack/tasks/main.yml
+#
+# Idempotent role that installs and starts the VPN Platform on any Ubuntu/Debian host.
+# Called by all provider-specific playbooks (ubuntu.yml, aws.yml, gcp.yml, azure.yml).
+# =============================================================================
+
+- name: Install git and curl
+  ansible.builtin.apt:
+    name: [git, curl]
+    state: present
+    update_cache: true
+
+- name: Clone or update repository
+  ansible.builtin.git:
+    repo: "{{ vpn_repo_url }}"
+    dest: "{{ vpn_install_dir }}"
+    version: "{{ vpn_repo_branch }}"
+    depth: 1
+    force: false
+  register: git_result
+
+- name: Create .env from example (first run only)
+  ansible.builtin.copy:
+    src: "{{ vpn_install_dir }}/.env.example"
+    dest: "{{ vpn_install_dir }}/.env"
+    remote_src: true
+    force: false
+    mode: "0600"
+
+- name: Create users.yaml from example (first run only)
+  ansible.builtin.copy:
+    src: "{{ vpn_install_dir }}/vpn/app/users.yaml.example"
+    dest: "{{ vpn_install_dir }}/vpn/app/users.yaml"
+    remote_src: true
+    force: false
+    mode: "0600"
+
+- name: Render .env overrides from Ansible vars
+  ansible.builtin.template:
+    src: env-overrides.j2
+    dest: "{{ vpn_install_dir }}/.env.overrides"
+    mode: "0600"
+  when: vpn_env_overrides is defined
+
+- name: Run bootstrap (start Docker stack)
+  ansible.builtin.command:
+    cmd: bash vpn/init/bootstrap.sh
+    chdir: "{{ vpn_install_dir }}"
+  when: git_result.changed or vpn_force_restart | default(false)
+  changed_when: true

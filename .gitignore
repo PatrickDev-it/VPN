@@ -1,18 +1,31 @@
-# Environment — contains secrets
-.env
+# =============================================================================
+# .gitignore — VPN Platform
+# =============================================================================
 
-# Runtime TLS certificates
+# --- Secrets and credentials ---
+.env
+vpn/app/users.yaml
+vpn/ssl-certificates/
 ssl-certificates/
 
-# Runtime logs
+# --- Runtime artifacts ---
+vpn/logs/
 logs/
+vpn/privoxy/config
 
-# Python bytecode
+# --- Python ---
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
 
-# User credentials — contains secrets
-app/users.yaml
+# --- Terraform state (never commit — use remote backend in production) ---
+infra/terraform/**/.terraform/
+infra/terraform/**/.terraform.lock.hcl
+infra/terraform/**/terraform.tfstate
+infra/terraform/**/terraform.tfstate.backup
+infra/terraform/**/*.tfvars
+infra/terraform/**/*.tfvars.json
 
-# Local patch history — not for version control
+# --- Local patch history ---
 session.md

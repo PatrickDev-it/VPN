@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# aws.yml — Deploy VPN stack to an AWS EC2 instance
+#
+# The EC2 instance IP is typically obtained from Terraform output:
+#   cd infra/terraform/aws && terraform output public_ip
+#
+# Usage:
+#   ansible-playbook -i inventories/aws/hosts.ini aws.yml \
+#     -e "ansible_host=<EC2_PUBLIC_IP>"
+# =============================================================================
+- name: Deploy VPN Platform — AWS EC2
+  hosts: vpn
+  become: true
+  vars:
+    ansible_user: ubuntu  # default AMI user for Ubuntu on AWS
+
+  roles:
+    - vpn-stack

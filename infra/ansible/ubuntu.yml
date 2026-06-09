@@ -1,0 +1,14 @@
+---
+# =============================================================================
+# ubuntu.yml — Deploy VPN stack to a bare-metal or VPS Ubuntu host
+#
+# Usage:
+#   ansible-playbook -i inventories/ubuntu/hosts.ini ubuntu.yml
+#   ansible-playbook -i inventories/ubuntu/hosts.ini ubuntu.yml -e vpn_force_restart=true
+# =============================================================================
+- name: Deploy VPN Platform — Ubuntu / Bare-metal
+  hosts: vpn
+  become: true
+
+  roles:
+    - vpn-stack

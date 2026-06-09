@@ -1,0 +1,16 @@
+---
+# =============================================================================
+# azure.yml — Deploy VPN stack to an Azure Linux VM
+#
+# Usage:
+#   ansible-playbook -i inventories/azure/hosts.ini azure.yml \
+#     -e "ansible_host=<VM_PUBLIC_IP>"
+# =============================================================================
+- name: Deploy VPN Platform — Azure VM
+  hosts: vpn
+  become: true
+  vars:
+    ansible_user: ubuntu
+
+  roles:
+    - vpn-stack
