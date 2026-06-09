@@ -17,8 +17,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-ENV_FILE="${PROJECT_DIR}/.env"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"          # = repo/vpn/
+REPO_ROOT="$(cd "${PROJECT_DIR}/.." && pwd)"           # = repo root
+ENV_FILE="${REPO_ROOT}/.env"
 
 # ---------------------------------------------------------------------------
 # 0. Privilege check
@@ -35,7 +36,7 @@ if [[ -f "${ENV_FILE}" ]]; then
   set -a; source "${ENV_FILE}"; set +a
   echo "[*] Loaded ${ENV_FILE}"
 else
-  cp "${PROJECT_DIR}/.env.example" "${ENV_FILE}"
+  cp "${REPO_ROOT}/.env.example" "${ENV_FILE}"
   set -a; source "${ENV_FILE}"; set +a
   echo "[!] ${ENV_FILE} not found; created from .env.example — edit it to customize."
 fi

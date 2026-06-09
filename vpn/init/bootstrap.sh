@@ -2,8 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${PROJECT_DIR}/.env"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # = repo/vpn/
+REPO_ROOT="$(cd "${PROJECT_DIR}/.." && pwd)"                     # = repo root
+ENV_FILE="${REPO_ROOT}/.env"
 PRIVOXY_CONFIG="${PROJECT_DIR}/privoxy/config"
 SYSTEMD_TEMPLATE="${PROJECT_DIR}/init/vps-proxy-stack.service"
 SYSTEMD_TARGET="/etc/systemd/system/vps-proxy-stack.service"
@@ -13,7 +14,7 @@ UNBOUND_CONF_SRC="${PROJECT_DIR}/unbound/unbound.conf"
 SSL_DIR="${PROJECT_DIR}/ssl-certificates"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
-  cp "${PROJECT_DIR}/.env.example" "${ENV_FILE}"
+  cp "${REPO_ROOT}/.env.example" "${ENV_FILE}"
   echo "Created ${ENV_FILE} from .env.example"
 fi
 
