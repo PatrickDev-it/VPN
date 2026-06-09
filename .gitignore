@@ -1,15 +1,18 @@
-# Environment (contains secrets)
+# Environment — contains secrets
 .env
 
-# Generated TLS certificates
+# Runtime TLS certificates
 ssl-certificates/
 
 # Runtime logs
 logs/
 
-# Python
+# Python bytecode
 __pycache__/
 *.pyc
 
-# User credentials (contains secrets)
+# User credentials — contains secrets
 app/users.yaml
+
+# Local patch history — not for version control
+session.md

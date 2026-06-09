@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint and static analysis
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run ruff
+        run: ruff check .
+
+  # ---------------------------------------------------------------------------
+  # Unit and integration tests
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install all dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest --tb=short -q
+
+  # ---------------------------------------------------------------------------
+  # Docker Compose configuration validation
+  # ---------------------------------------------------------------------------
+  compose-validate:
+    name: Compose config validation
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy env template
+        run: cp .env.example .env
+
+      - name: Validate docker-compose.yml
+        run: docker compose config -q
+
+  # ---------------------------------------------------------------------------
+  # Build all Docker images
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    needs: [test, compose-validate]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Copy env template
+        run: cp .env.example .env
+
+      - name: Build mitmproxy image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build unbound image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/unbound/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build privoxy image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/privoxy/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build tor image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/tor/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Smoke test: start stack, verify mitmproxy is reachable, tear down
+  # ---------------------------------------------------------------------------
+  smoke:
+    name: Smoke test (stack up)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy env template
+        run: cp .env.example .env
+
+      - name: Create minimal users.yaml for smoke test
+        run: |
+          cat > app/users.yaml <<'EOF'
+          users:
+            ci_user:
+              password_sha256: "$(echo -n 'ci_pass' | sha256sum | cut -d' ' -f1)"
+              token: "ci-smoke-token-00000000"
+          EOF
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Wait for mitmproxy to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -s --max-time 2 -x http://localhost:8080 \
+              -U 'ci_user:ci_pass' http://example.com -o /dev/null -w "%{http_code}" | grep -qE '^[23]'; then
+              echo "mitmproxy ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "mitmproxy not ready after 30s"
+          docker compose logs mitmproxy
+          exit 1
+
+      - name: Verify 407 on unauthenticated request
+        run: |
+          status=$(curl -s --max-time 5 -x http://localhost:8080 http://example.com \
+            -o /dev/null -w "%{http_code}")
+          [ "$status" = "407" ] || (echo "Expected 407, got $status"; exit 1)
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
