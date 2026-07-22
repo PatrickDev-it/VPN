@@ -48,7 +48,11 @@ lint ──────┬──► compose-validate ──┐
 | `test` | ubuntu-latest | Runs `pytest vpn/tests --tb=short -q` (requires `lint` to pass) |
 | `compose-validate` | ubuntu-latest | Validates `vpn/docker-compose.yml` with the root `.env.example` |
 | `build` | ubuntu-latest | Builds all 4 Docker images with layer caching via GitHub Actions Cache |
-| `smoke` | ubuntu-latest | Starts the stack; verifies service state, internal reachability, 407 enforcement, and authenticated admission |
+| `smoke` | ubuntu-latest | Generates an ephemeral TLS fixture, starts the stack, and verifies service state, DoT negotiation, internal reachability, 407 enforcement, and authenticated admission |
+
+The smoke job renders the same Unbound TLS placeholders used by host bootstrap, but generates a one-day,
+localhost-only certificate without contacting an external CA. This keeps the PR gate deterministic while
+exercising the actual DNS-over-TLS listener rather than disabling it for CI.
 
 ### Image Caching
 

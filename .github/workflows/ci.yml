@@ -145,6 +145,21 @@ jobs:
               token: "ci-smoke-token-00000000"
           EOF
 
+      - name: Prepare deterministic TLS fixture
+        working-directory: vpn
+        run: |
+          mkdir -p ssl-certificates
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes \
+            -keyout ssl-certificates/server.key \
+            -out ssl-certificates/server.crt \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          sed -i \
+            -e 's|{{TLS_SERVICE_KEY}}|/etc/nginx/ssl-certificates/server.key|g' \
+            -e 's|{{TLS_SERVICE_PEM}}|/etc/nginx/ssl-certificates/server.crt|g' \
+            unbound/unbound.conf
+          ! grep -q '{{TLS_SERVICE_\(KEY\|PEM\)}}' unbound/unbound.conf
+
       - name: Start stack
         working-directory: vpn
         run: docker compose --env-file ../.env.example up -d --build
@@ -184,6 +199,8 @@ jobs:
           done
           docker compose --env-file ../.env.example exec -T mitmproxy \
             python -c "import socket; socket.create_connection(('privoxy', 8118), 5).close()"
+          timeout 10 openssl s_client -connect 127.0.0.1:853 -servername localhost \
+            -brief </dev/null 2>&1 | grep -q 'Protocol version: TLSv1\.[23]'
 
       - name: Tear down stack
         if: always()
