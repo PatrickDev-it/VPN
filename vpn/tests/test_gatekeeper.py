@@ -252,6 +252,17 @@ class TestScrubbing:
         assert b"xxPlacements" in flow.response.content
         assert b"adPlacements" not in flow.response.content
 
+        flow.response.content = b'{"trackingParams":"value"}'
+        tracking_config = {
+            **gk.config,
+            "_binary_replacements": [
+                (b"trackingParams", b"xxxxxxxxParams"),
+            ],
+        }
+        gk.binary_scrub(flow, tracking_config)
+        assert b"xxxxxxxxParams" in flow.response.content
+        assert b"trackingParams" not in flow.response.content
+
 
 class TestRateLimiting:
     def test_per_user_rate_limit_rpm_override(self, gk):

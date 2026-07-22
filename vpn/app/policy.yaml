@@ -137,7 +137,7 @@ binary_replacements:
   - old: "ad_placement"
     new: "xx_placement"
   - old: "trackingParams"
-    new: "xxxxxxxParams"
+    new: "xxxxxxxxParams"
   - old: "adBreakHeartbeatParams"
     new: "xxBreakHeartbeatParams"
 

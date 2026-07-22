@@ -48,7 +48,7 @@ lint ──────┬──► compose-validate ──┐
 | `test` | ubuntu-latest | Runs `pytest vpn/tests --tb=short -q` (requires `lint` to pass) |
 | `compose-validate` | ubuntu-latest | Validates `vpn/docker-compose.yml` with the root `.env.example` |
 | `build` | ubuntu-latest | Builds all 4 Docker images with layer caching via GitHub Actions Cache |
-| `smoke` | ubuntu-latest | Starts the full stack, checks 200 on authenticated request, checks 407 on unauthenticated, tears down |
+| `smoke` | ubuntu-latest | Starts the stack; verifies service state, internal reachability, 407 enforcement, and authenticated admission |
 
 ### Image Caching
 

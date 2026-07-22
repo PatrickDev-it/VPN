@@ -163,7 +163,7 @@ class Gatekeeper:
             "binary_replacements": [
                 {"old": "adPlacements",          "new": "xxPlacements"},
                 {"old": "ad_placement",          "new": "xx_placement"},
-                {"old": "trackingParams",        "new": "xxxxxxxParams"},
+                {"old": "trackingParams",        "new": "xxxxxxxxParams"},
                 {"old": "adBreakHeartbeatParams","new": "xxBreakHeartbeatParams"},
             ],
             "msg_blocked_domain":  "Site blocked by Gatekeeper",

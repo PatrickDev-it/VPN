@@ -115,7 +115,7 @@ for correct signal handling and zombie process reaping.
 
 - Internal bridge `proxy_net` — services can only communicate with each other
 - Only mitmproxy is exposed to the host on `0.0.0.0:8080`
-- Privoxy is bound to loopback (`127.0.0.1:8118`) and not reachable externally
+- Privoxy listens on `proxy_net` but its host publication is loopback-only (`127.0.0.1:8118`)
 - Tor has no exposed ports at all
 
 ---

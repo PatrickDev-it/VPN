@@ -81,7 +81,8 @@ DNS (parallel, not in the proxy chain):
 
 All services share the internal bridge network `proxy_net`.
 Only mitmproxy is exposed to the host on `0.0.0.0:8080`.
-Privoxy and Tor are unreachable from outside the container network.
+Privoxy listens on all interfaces inside `proxy_net` so mitmproxy can reach it, but its host publication is
+restricted to `127.0.0.1:8118`. Tor is not published to the host.
 
 ```
 proxy_net (internal bridge)

@@ -249,7 +249,7 @@ Applied when JSON parsing fails. Hardcoded byte-level replacements:
 |---------------|-------------|--------|
 | `adPlacements` | `xxPlacements` | 12 bytes = 12 bytes |
 | `ad_placement` | `xx_placement` | 12 bytes = 12 bytes |
-| `trackingParams` | `xxxxxxxParams` | 14 bytes = 14 bytes |
+| `trackingParams` | `xxxxxxxxParams` | 14 bytes = 14 bytes |
 | `adBreakHeartbeatParams` | `xxBreakHeartbeatParams` | 22 bytes = 22 bytes |
 
 > **Rule:** old and new patterns **must be equal byte length** to preserve binary offsets
