@@ -235,8 +235,11 @@ remote-control:
     control-enable: yes
     control-interface: 127.0.0.1
     control-port: 8953
+    control-use-cert: no
 ```
 Enables `unbound-control` for statistics and cache management without a container restart.
+The interface is restricted to the container loopback namespace, so the local control channel does not
+depend on generated TLS credentials and is not reachable from the host or Compose network.
 
 **Exposing DoT publicly (optional):**
 To make the DNS-over-TLS resolver accessible to external clients, set in `.env`:
