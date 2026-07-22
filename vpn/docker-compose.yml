@@ -61,6 +61,7 @@ services:
 
       mitmproxy:
             build: .
+            image: ${MITMPROXY_IMAGE:-vps-proxy-stack-mitmproxy:local}
             restart: unless-stopped
             init: true
             security_opt:

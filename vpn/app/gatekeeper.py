@@ -532,7 +532,7 @@ class Gatekeeper:
                         clean[key] = {}
                     elif isinstance(value, bool):
                         clean[key] = False
-                    elif isinstance(value, (int, float)):
+                    elif isinstance(value, int | float):
                         clean[key] = 0
                     else:
                         clean[key] = ""
