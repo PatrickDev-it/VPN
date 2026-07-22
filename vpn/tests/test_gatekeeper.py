@@ -6,6 +6,7 @@ a live mitmproxy installation or Docker stack.
 """
 
 import hashlib
+import logging
 import sys
 import types
 from pathlib import Path
@@ -52,7 +53,7 @@ os.environ.setdefault("TRAFFIC_LOG_FILE",  "/tmp/gatekeeper_test_traffic.log")
 
 # Import the module under test
 sys.path.insert(0, str(Path(__file__).parent.parent / "app"))
-from gatekeeper import Gatekeeper  # noqa: E402
+from gatekeeper import Gatekeeper, _setup_file_logger  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -60,6 +61,19 @@ from gatekeeper import Gatekeeper  # noqa: E402
 
 ALICE_PASSWORD = "correcthorsebatterystaple"
 ALICE_HASH = hashlib.sha256(ALICE_PASSWORD.encode()).hexdigest()
+
+
+def test_file_logger_falls_back_to_stderr_when_storage_is_unavailable():
+    log_name = "gatekeeper_test_unwritable_log"
+    fallback_logger = logging.getLogger(log_name)
+    fallback_logger.handlers.clear()
+
+    with patch("gatekeeper.logging.FileHandler", side_effect=PermissionError("read-only mount")):
+        configured = _setup_file_logger(log_name, "/unwritable/auth.log")
+
+    assert len(configured.handlers) == 1
+    assert isinstance(configured.handlers[0], logging.StreamHandler)
+    fallback_logger.handlers.clear()
 
 
 def _write_fixtures(policy: dict | None = None, users: dict | None = None):

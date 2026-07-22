@@ -26,9 +26,12 @@ jobs:
           cache-dependency-path: |
             vpn/requirements.txt
             vpn/requirements-dev.txt
+            vpn/requirements-security-overrides.txt
 
       - name: Install dependencies
-        run: pip install -r vpn/requirements.txt -r vpn/requirements-dev.txt
+        run: |
+          pip install -r vpn/requirements.txt -r vpn/requirements-dev.txt
+          pip install --no-deps --upgrade -r vpn/requirements-security-overrides.txt
 
       - name: Run static analysis and tests
         run: |

@@ -41,9 +41,13 @@ def _setup_file_logger(name: str, file_path: str) -> logging.Logger:
     log = logging.getLogger(name)
     log.setLevel(logging.INFO)
     log.propagate = False
-    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
     if not log.handlers:
-        handler = logging.FileHandler(file_path)
+        try:
+            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+            handler: logging.Handler = logging.FileHandler(file_path)
+        except OSError as exc:
+            handler = logging.StreamHandler()
+            logger.warning("Persistent log unavailable at %s; using stderr: %s", file_path, exc)
         handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
         log.addHandler(handler)
     return log

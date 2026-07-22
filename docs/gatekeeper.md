@@ -267,6 +267,10 @@ Applied when JSON parsing fails. Hardcoded byte-level replacements:
 2026-06-09 12:00:02 INFO user=alice client_ip=1.2.3.4 status=denied reason=rate_limited
 ```
 
+If the configured log directory is unavailable or read-only, Gatekeeper emits a warning and redirects
+authentication and traffic events to container `stderr`. This preserves service availability while keeping
+the persistence fault visible through `docker compose logs mitmproxy`.
+
 ### Traffic Log (`logs/traffic.log`)
 
 ```

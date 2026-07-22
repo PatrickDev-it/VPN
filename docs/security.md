@@ -158,7 +158,7 @@ Removed from every forwarded request:
 
 ### Whitelist / Blacklist Policy
 
-Defined in `app/policy.yaml`. See [gatekeeper.md](gatekeeper.md) for the evaluation order.
+Defined in `vpn/app/policy.yaml`. See [gatekeeper.md](gatekeeper.md) for the evaluation order.
 
 **Key rule:** whitelist always takes precedence over blacklist.
 CONNECT requests (HTTPS tunnels) bypass policy evaluation — authentication still applies.
@@ -255,9 +255,34 @@ IsolateSOCKSAuth  — separate circuit per SOCKS credential
 | File | Contents | Git Status |
 |------|----------|-----------|
 | `.env` | All configuration secrets | Excluded (`.gitignore`) |
-| `app/users.yaml` | User credentials (hashes + tokens) | Excluded (`.gitignore`) |
-| `ssl-certificates/` | Private TLS keys | Excluded (`.gitignore`) |
-| `logs/` | Auth logs containing IP addresses | Excluded (`.gitignore`) |
+| `vpn/app/users.yaml` | User credentials (hashes + tokens) | Excluded (`.gitignore`) |
+| `vpn/ssl-certificates/` | Private TLS keys | Excluded (`.gitignore`) |
+| `vpn/logs/` | Auth logs containing IP addresses | Excluded (`.gitignore`) |
+
+## Supply-chain Gates
+
+Every push to `main`, pull request, and weekly scheduled run executes:
+
+- `pip-audit` against `vpn/requirements.txt`;
+- Trivy filesystem scanning against `vpn/`;
+- Trivy scanning against the built mitmproxy image.
+
+High and critical findings with available fixes fail the workflow. Dependency updates must preserve
+the unit-test contract and pass both source and container scans before the repository is presented as green.
+Audit tooling is versioned independently in `vpn/requirements-audit.txt` so the scanner environment is
+reproducible and does not inherit the runner's bundled package-manager vulnerabilities.
+
+### Temporary upstream compatibility override
+
+Mitmproxy 12.2.3 declares upper bounds of `msgpack<=1.1.2` and `tornado<=6.5.5`. Those versions are
+affected by [GHSA-6v7p-g79w-8964](https://github.com/advisories/GHSA-6v7p-g79w-8964) and
+[GHSA-pw6j-qg29-8w7f](https://github.com/advisories/GHSA-pw6j-qg29-8w7f). Until mitmproxy publishes
+compatible metadata, the build installs `msgpack==1.2.1` and `tornado==6.5.7` from
+`requirements-security-overrides.txt` after the base dependency resolution.
+
+This is an explicit, tested exception—not a scanner suppression. Unit tests execute against the overridden
+environment, pip-audit inspects the installed environment, and Trivy scans the resulting image. Remove the
+override immediately after an upstream mitmproxy release permits both fixed versions through normal resolution.
 
 ---
 

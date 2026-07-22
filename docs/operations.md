@@ -73,6 +73,9 @@ make logs-traffic    # tail logs/traffic.log (request/response log)
 make logs-tor        # tail /var/log/tor/notices.log (inside tor container)
 ```
 
+If file-backed logging cannot be initialized, Gatekeeper falls back to container `stderr`. Inspect it with
+`docker compose -f vpn/docker-compose.yml logs mitmproxy` from the repository root.
+
 ### Stack Verification
 
 ```bash
