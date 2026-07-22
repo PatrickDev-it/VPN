@@ -203,6 +203,9 @@ val-permissive-mode: no      # DNSSEC enforced — unsigned responses are reject
 module-config: "validator iterator"
 ```
 
+The Unbound image seeds this writable RFC 5011 trust anchor from Debian's `dns-root-data` package and assigns
+it to the unprivileged `unbound` runtime user. Image construction fails if the packaged anchor is unavailable.
+
 ### DNS Privacy
 ```
 hide-identity: yes
