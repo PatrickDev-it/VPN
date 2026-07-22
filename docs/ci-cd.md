@@ -53,6 +53,8 @@ lint ──────┬──► compose-validate ──┐
 The smoke job renders the same Unbound TLS placeholders used by host bootstrap, but generates a one-day,
 localhost-only certificate without contacting an external CA. This keeps the PR gate deterministic while
 exercising the actual DNS-over-TLS listener rather than disabling it for CI.
+Before startup it runs `unbound-checkconf` against the mounted runtime configuration. A failed service contract
+reports the container exit code, OOM state, and service logs before teardown.
 
 ### Image Caching
 

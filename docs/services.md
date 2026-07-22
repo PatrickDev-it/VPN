@@ -179,6 +179,9 @@ AutomapHostsOnResolve 0
 
 **Configuration** (`unbound/unbound.conf`):
 
+Runtime diagnostics are written to container stdout/stderr (`use-syslog: no`) so fatal startup errors and
+resolver warnings remain available through `docker compose logs unbound` without a sidecar syslog daemon.
+
 ### Performance Tuning (4-core / 4 GB RAM baseline)
 ```
 num-threads: 4
