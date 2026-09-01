@@ -1,4 +1,4 @@
 # Temporary compatibility overrides for vulnerabilities unresolved by mitmproxy 12.2.3 metadata.
 # Install only after requirements.txt and with --no-deps; see docs/security.md.
 msgpack==1.2.1
-tornado==6.5.7
+tornado==6.5.8
